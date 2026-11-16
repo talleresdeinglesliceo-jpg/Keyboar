@@ -1,4 +1,362 @@
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local Lighting = game:GetService("Lighting")
+local Workspace = game:GetService("Workspace")
+local CoreGui = game:GetService("CoreGui")
+
+-- ⚙️ CONFIGURACIÓN DE ILUMINACIÓN CHILL GRAY
+local CONFIG_BRIGHTNESS = 1.2
+local CONFIG_AMBIENT = 120
+
+pcall(function()
+	Lighting.GlobalShadows = false
+	Lighting.Brightness = CONFIG_BRIGHTNESS
+	Lighting.OutdoorAmbient = Color3.fromRGB(CONFIG_AMBIENT, CONFIG_AMBIENT, CONFIG_AMBIENT)
+	Lighting.Ambient = Color3.fromRGB(CONFIG_AMBIENT, CONFIG_AMBIENT, CONFIG_AMBIENT)
+	Lighting.FogEnd = 2000
+	Lighting.FogColor = Color3.fromRGB(100, 100, 100)
+	Lighting.Technology = Enum.Technology.Compatibility
+	
+	for _, v in ipairs(Lighting:GetChildren()) do
+		if v:IsA("PostEffect") or v:IsA("Sky") then
+			v:Destroy()
+		end
+	end
+	
+	local chillSky = Instance.new("Sky")
+	chillSky.Name = "ChillGraySky"
+	local grayHex = "rbxassetid://0"
+	chillSky.SkyboxBk = grayHex
+	chillSky.SkyboxDn = grayHex
+	chillSky.SkyboxFt = grayHex
+	chillSky.SkyboxLf = grayHex
+	chillSky.SkyboxRt = grayHex
+	chillSky.SkyboxUp = grayHex
+	chillSky.SunTextureId = ""
+	chillSky.MoonTextureId = ""
+	chillSky.StarCount = 0
+	chillSky.Parent = Lighting
+	
+	local terrain = Workspace:FindFirstChildOfClass("Terrain")
+	if terrain then
+		pcall(function()
+			terrain.WaterWaveSize = 0
+			terrain.WaterWaveSpeed = 0
+			terrain.WaterTransparency = 0.5
+			terrain.WaterReflectance = 0
+			sethiddenproperty(terrain, "Decoration", false)
+		end)
+	end
+end)
+
+local player = Players.LocalPlayer
+local camera = Workspace.CurrentCamera
+
+local function initializeUI()
+	local playerGui = player:WaitForChild("PlayerGui", 15)
+	if not playerGui then return end
+
+	if playerGui:FindFirstChild("VisualKeystrokesMVS") then
+		playerGui.VisualKeystrokesMVS:Destroy()
+	end
+	if CoreGui:FindFirstChild("VisualKeystrokesMVS") then
+		CoreGui.VisualKeystrokesMVS:Destroy()
+	end
+
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.Name = "VisualKeystrokesMVS"
+	screenGui.ResetOnSpawn = false
+	screenGui.IgnoreGuiInset = true
+	screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	
+	local success = pcall(function()
+		screenGui.Parent = CoreGui
+	end)
+	if not success then
+		screenGui.Parent = playerGui
+	end
+
+	local isLocked = false
+
+	-- Botón de bloqueo
+	local lockButton = Instance.new("TextButton")
+	lockButton.Name = "LockToggleButton"
+	lockButton.Size = UDim2.new(0, 85, 0, 26)
+	lockButton.Position = UDim2.new(1, -225, 0, 16)
+	lockButton.BackgroundColor3 = Color3.fromRGB(45, 210, 100)
+	lockButton.BorderSizePixel = 0
+	lockButton.Font = Enum.Font.GothamBold
+	lockButton.TextSize = 11
+	lockButton.TextColor3 = Color3.fromRGB(15, 15, 15)
+	lockButton.Text = "FIJO: NO"
+	lockButton.Parent = screenGui
+
+	local lockCorner = Instance.new("UICorner")
+	lockCorner.CornerRadius = UDim.new(0, 6)
+	lockCorner.Parent = lockButton
+
+	-- Panel FPS
+	local bgFrame = Instance.new("Frame")
+	bgFrame.Name = "FPSContainer"
+	bgFrame.Size = UDim2.new(0, 250, 0, 45)
+	bgFrame.Position = UDim2.new(1, -395, 0, 16)
+	bgFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	bgFrame.BackgroundTransparency = 0.05
+	bgFrame.BorderSizePixel = 0
+	bgFrame.Parent = screenGui
+
+	local textLabel = Instance.new("TextLabel")
+	textLabel.Name = "FPSValue"
+	textLabel.Size = UDim2.new(1, 0, 1, 0)
+	textLabel.BackgroundTransparency = 1
+	textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	textLabel.TextSize = 13
+	textLabel.Font = Enum.Font.Code
+	textLabel.TextXAlignment = Enum.TextXAlignment.Left
+	textLabel.Parent = bgFrame
+
+	-- Indicador de Brillo
+	local brightnessFrame = Instance.new("Frame")
+	brightnessFrame.Name = "BrightnessContainer"
+	brightnessFrame.Size = UDim2.new(0, 110, 0, 45)
+	brightnessFrame.Position = UDim2.new(1, -140, 0, 48)
+	brightnessFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	brightnessFrame.BackgroundTransparency = 0.05
+	brightnessFrame.BorderSizePixel = 0
+	brightnessFrame.Parent = screenGui
+
+	local brightLabel = Instance.new("TextLabel")
+	brightLabel.Name = "BrightValue"
+	brightLabel.Size = UDim2.new(1, 0, 1, 0)
+	brightLabel.BackgroundTransparency = 1
+	brightLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+	brightLabel.TextSize = 13
+	brightLabel.Font = Enum.Font.Code
+	brightLabel.TextXAlignment = Enum.TextXAlignment.Left
+	brightLabel.Text = string.format("  Lux: %.1f", CONFIG_BRIGHTNESS)
+	brightLabel.Parent = brightnessFrame
+
+	-- Teclado Visual
+	local mainFrame = Instance.new("Frame")
+	mainFrame.Name = "KeystrokesContainer"
+	mainFrame.Size = UDim2.new(0, 115, 0, 153)
+	mainFrame.Position = UDim2.new(1, -135, 0, 75)
+	mainFrame.BackgroundTransparency = 1
+	mainFrame.Parent = screenGui
+
+	local COLOR_BG_IDLE = Color3.fromRGB(22, 22, 26)
+	local COLOR_TEXT_IDLE = Color3.fromRGB(255, 255, 255)
+	local COLOR_TEXT_ACTIVE = Color3.fromRGB(15, 15, 15)
+
+	local COLORS = {
+		["1"]     = Color3.fromRGB(170, 85, 255),
+		["2"]     = Color3.fromRGB(255, 65, 140),
+		["W"]     = Color3.fromRGB(70, 235, 110),
+		["A"]     = Color3.fromRGB(45, 210, 255),
+		["S"]     = Color3.fromRGB(55, 165, 255),
+		["D"]     = Color3.fromRGB(85, 115, 255),
+		["SPACE"] = Color3.fromRGB(255, 185, 45)
+	}
+
+	local keyElements = {}
+
+	local function createKey(name, pos, size, accentColor, textSize)
+		local keyFrame = Instance.new("Frame")
+		keyFrame.Name = "Key_" .. name
+		keyFrame.Size = size
+		keyFrame.Position = pos
+		keyFrame.BackgroundColor3 = COLOR_BG_IDLE
+		keyFrame.BackgroundTransparency = 0.25
+		keyFrame.BorderSizePixel = 0
+		keyFrame.Parent = mainFrame
+
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 6)
+		corner.Parent = keyFrame
+
+		local stroke = Instance.new("UIStroke")
+		stroke.Color = accentColor
+		stroke.Thickness = 1.6
+		stroke.Transparency = 0.15
+		stroke.Parent = keyFrame
+
+		local bottomBar = Instance.new("Frame")
+		bottomBar.Name = "AccentBar"
+		bottomBar.Size = UDim2.new(0.65, 0, 0, 2)
+		bottomBar.Position = UDim2.new(0.175, 0, 1, -5)
+		bottomBar.BackgroundColor3 = accentColor
+		bottomBar.BorderSizePixel = 0
+		bottomBar.Parent = keyFrame
+
+		local barCorner = Instance.new("UICorner")
+		barCorner.CornerRadius = UDim.new(1, 0)
+		barCorner.Parent = bottomBar
+
+		local label = Instance.new("TextLabel")
+		label.Name = "Label"
+		label.Size = UDim2.new(1, 0, 1, -2)
+		label.BackgroundTransparency = 1
+		label.Text = name
+		label.Font = Enum.Font.GothamBold
+		label.TextSize = textSize or 14
+		label.TextColor3 = COLOR_TEXT_IDLE
+		label.Parent = keyFrame
+
+		keyElements[name] = {
+			Frame = keyFrame,
+			Label = label,
+			Accent = accentColor,
+			Active = false
+		}
+	end
+
+	createKey("1", UDim2.new(0, 0, 0, 0), UDim2.new(0, 34, 0, 34), COLORS["1"])
+	createKey("2", UDim2.new(0, 39, 0, 0), UDim2.new(0, 34, 0, 34), COLORS["2"])
+	createKey("W", UDim2.new(0, 39, 0, 39), UDim2.new(0, 34, 0, 34), COLORS["W"])
+	createKey("A", UDim2.new(0, 0, 0, 78), UDim2.new(0, 34, 0, 34), COLORS["A"])
+	createKey("S", UDim2.new(0, 39, 0, 78), UDim2.new(0, 34, 0, 34), COLORS["S"])
+	createKey("D", UDim2.new(0, 78, 0, 78), UDim2.new(0, 34, 0, 34), COLORS["D"])
+	createKey("SPACE", UDim2.new(0, 0, 0, 117), UDim2.new(0, 73, 0, 34), COLORS["SPACE"], 11)
+
+	local tweenInfo = TweenInfo.new(0.05, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+
+	local function setKeyState(keyName, isActive)
+		local data = keyElements[keyName]
+		if not data or data.Active == isActive then return end
+		data.Active = isActive
+
+		if isActive then
+			data.Frame.BackgroundColor3 = data.Accent
+			data.Frame.BackgroundTransparency = 0.1
+			data.Label.TextColor3 = COLOR_TEXT_ACTIVE
+		else
+			data.Frame.BackgroundColor3 = COLOR_BG_IDLE
+			data.Frame.BackgroundTransparency = 0.25
+			data.Label.TextColor3 = COLOR_TEXT_IDLE
+		end
+	end
+
+	local function makeDraggable(guiObject)
+		local dragging, dragStart, startPos
+
+		guiObject.InputBegan:Connect(function(input)
+			if isLocked then return end
+			if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+				dragging = true
+				dragStart = input.Position
+				startPos = guiObject.Position
+			end
+		end)
+
+		UserInputService.InputChanged:Connect(function(input)
+			if dragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
+				local delta = input.Position - dragStart
+				guiObject.Position = UDim2.new(
+					startPos.X.Scale, startPos.X.Offset + delta.X,
+					startPos.Y.Scale, startPos.Y.Offset + delta.Y
+				)
+			end
+		end)
+
+		UserInputService.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+				dragging = false
+			end
+		end)
+	end
+
+	makeDraggable(mainFrame)
+	makeDraggable(bgFrame)
+	makeDraggable(brightnessFrame)
+
+	lockButton.MouseButton1Click:Connect(function()
+		isLocked = not isLocked
+		if isLocked then
+			lockButton.Text = "FIJO: SÍ"
+			lockButton.BackgroundColor3 = Color3.fromRGB(255, 65, 85)
+			lockButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+		else
+			lockButton.Text = "FIJO: NO"
+			lockButton.BackgroundColor3 = Color3.fromRGB(45, 210, 100)
+			lockButton.TextColor3 = Color3.fromRGB(15, 15, 15)
+		end
+	end)
+
+	-- Optimización del bucle: se usa un contador para actualizar herramientas cada cierto tiempo y no saturar Solara
+	local lastUpdate = 0
+	local frameCount = 0
+	local toolCheckTimer = 0
+
+	RunService.RenderStepped:Connect(function(dt)
+		frameCount = frameCount + 1
+		lastUpdate = lastUpdate + dt
+		toolCheckTimer = toolCheckTimer + dt
+
+		if lastUpdate >= 0.5 then
+			local currentFps = math.floor(frameCount / lastUpdate + 0.5)
+			local msec = (1 / math.max(currentFps, 1)) * 1000
+			textLabel.Text = string.format("  FPS: %.1f/s %.1f msec 11%%", currentFps, msec)
+			frameCount = 0
+			lastUpdate = 0
+		end
+
+		local char = player.Character
+		local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+
+		if humanoid and humanoid.MoveDirection.Magnitude > 0.1 then
+			local relativeMove = camera.CFrame:VectorToObjectSpace(humanoid.MoveDirection)
+			setKeyState("W", relativeMove.Z < -0.35)
+			setKeyState("S", relativeMove.Z > 0.35)
+			setKeyState("A", relativeMove.X < -0.35)
+			setKeyState("D", relativeMove.X > 0.35)
+		else
+			setKeyState("W", false)
+			setKeyState("S", false)
+			setKeyState("A", false)
+			setKeyState("D", false)
+		end
+
+		local isJumping = (humanoid and humanoid.Jump) 
+			or UserInputService:IsKeyDown(Enum.KeyCode.Space)
+		setKeyState("SPACE", isJumping)
+
+		-- Verificación de herramientas optimizada (corre cada 0.15 segundos para no causar lag de tirones)
+		if toolCheckTimer >= 0.15 then
+			toolCheckTimer = 0
+			local backpack = player:FindFirstChild("Backpack")
+			local tools = {}
+			
+			if backpack then
+				for _, item in ipairs(backpack:GetChildren()) do
+					if item:IsA("Tool") then
+						table.insert(tools, item)
+					end
+				end
+			end
+			
+			local equippedTool = char and char:FindFirstChildOfClass("Tool")
+			if equippedTool then
+				table.insert(tools, equippedTool)
+			end
+
+			table.sort(tools, function(a, b) return a.Name < b.Name end)
+
+			for i = 1, 2 do
+				local slotTool = tools[i]
+				if slotTool and slotTool.Parent == char then
+					setKeyState(tostring(i), true)
+				else
+					setKeyState(tostring(i), false)
+				end
+			end
+		end
+	end)
+end
+
+initializeUI()
+local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
