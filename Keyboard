@@ -22,8 +22,8 @@ screenGui.Parent = playerGui
 -- Contenedor en la ESQUINA SUPERIOR DERECHA
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "Container"
-mainFrame.Size = UDim2.new(0, 152, 0, 114)
-mainFrame.Position = UDim2.new(1, -168, 0, 16) -- Esquina superior derecha (con un margen de 16 píxeles)
+mainFrame.Size = UDim2.new(0, 191, 0, 153)
+mainFrame.Position = UDim2.new(1, -207, 0, 16)
 mainFrame.BackgroundTransparency = 1
 mainFrame.Parent = screenGui
 
@@ -33,25 +33,27 @@ local COLOR_BG_ACTIVE = Color3.fromRGB(255, 255, 255)
 local COLOR_TEXT_IDLE = Color3.fromRGB(255, 255, 255)
 local COLOR_TEXT_ACTIVE = Color3.fromRGB(15, 15, 15)
 
--- Paleta de bordes neón como en la imagen
+-- Paleta de colores
 local COLORS = {
-	["1"] = Color3.fromRGB(170, 85, 255),  -- Morado
-	["2"] = Color3.fromRGB(255, 65, 140),  -- Rosa/Magenta
-	["3"] = Color3.fromRGB(255, 150, 45),  -- Naranja
-	["4"] = Color3.fromRGB(255, 220, 50),  -- Amarillo
-	["W"] = Color3.fromRGB(70, 235, 110),  -- Verde
-	["A"] = Color3.fromRGB(45, 210, 255),  -- Cian
-	["S"] = Color3.fromRGB(55, 165, 255),  -- Azul claro
-	["D"] = Color3.fromRGB(85, 115, 255)   -- Azul/Índigo
+	["1"]     = Color3.fromRGB(170, 85, 255),  -- Morado
+	["2"]     = Color3.fromRGB(255, 65, 140),  -- Rosa/Magenta
+	["3"]     = Color3.fromRGB(255, 150, 45),  -- Naranja
+	["4"]     = Color3.fromRGB(255, 220, 50),  -- Amarillo
+	["W"]     = Color3.fromRGB(70, 235, 110),  -- Verde
+	["A"]     = Color3.fromRGB(45, 210, 255),  -- Cian
+	["S"]     = Color3.fromRGB(55, 165, 255),  -- Azul claro
+	["D"]     = Color3.fromRGB(85, 115, 255),  -- Azul/Índigo
+	["SPACE"] = Color3.fromRGB(255, 185, 45),  -- Dorado
+	["LMB"]   = Color3.fromRGB(255, 80, 80)    -- Rojo (Clic Izquierdo / Táctil)
 }
 
 local keyElements = {}
 
--- Función para construir cada tecla
-local function createKey(name, pos, accentColor)
+-- Función para construir cada tecla o sección del mouse
+local function createKey(name, pos, size, accentColor, customText)
 	local keyFrame = Instance.new("Frame")
 	keyFrame.Name = "Key_" .. name
-	keyFrame.Size = UDim2.new(0, 34, 0, 34)
+	keyFrame.Size = size or UDim2.new(0, 34, 0, 34)
 	keyFrame.Position = pos
 	keyFrame.BackgroundColor3 = COLOR_BG_IDLE
 	keyFrame.BackgroundTransparency = 0.25
@@ -68,7 +70,7 @@ local function createKey(name, pos, accentColor)
 	stroke.Transparency = 0.15
 	stroke.Parent = keyFrame
 
-	-- Barra de acento inferior dentro de la tecla
+	-- Barra de acento inferior
 	local bottomBar = Instance.new("Frame")
 	bottomBar.Name = "AccentBar"
 	bottomBar.Size = UDim2.new(0.65, 0, 0, 2)
@@ -85,9 +87,9 @@ local function createKey(name, pos, accentColor)
 	label.Name = "Label"
 	label.Size = UDim2.new(1, 0, 1, -2)
 	label.BackgroundTransparency = 1
-	label.Text = name
+	label.Text = customText or name
 	label.Font = Enum.Font.GothamBold
-	label.TextSize = 14
+	label.TextSize = 12
 	label.TextColor3 = COLOR_TEXT_IDLE
 	label.Parent = keyFrame
 
@@ -99,19 +101,30 @@ local function createKey(name, pos, accentColor)
 	}
 end
 
--- Fila superior: 1, 2, 3, 4
-createKey("1", UDim2.new(0, 0, 0, 0), COLORS["1"])
-createKey("2", UDim2.new(0, 39, 0, 0), COLORS["2"])
-createKey("3", UDim2.new(0, 78, 0, 0), COLORS["3"])
-createKey("4", UDim2.new(0, 117, 0, 0), COLORS["4"])
+local stdSize = UDim2.new(0, 34, 0, 34)
+local spaceSize = UDim2.new(0, 112, 0, 34)
 
--- Fila media: W (alineada sobre la S, columna 2)
-createKey("W", UDim2.new(0, 39, 0, 39), COLORS["W"])
+-- Fila superior: 1, 2, 3, 4
+createKey("1", UDim2.new(0, 0, 0, 0), stdSize, COLORS["1"])
+createKey("2", UDim2.new(0, 39, 0, 0), stdSize, COLORS["2"])
+createKey("3", UDim2.new(0, 78, 0, 0), stdSize, COLORS["3"])
+createKey("4", UDim2.new(0, 117, 0, 0), stdSize, COLORS["4"])
+
+-- Fila media: W
+createKey("W", UDim2.new(0, 39, 0, 39), stdSize, COLORS["W"])
 
 -- Fila inferior: A, S, D
-createKey("A", UDim2.new(0, 0, 0, 78), COLORS["A"])
-createKey("S", UDim2.new(0, 39, 0, 78), COLORS["S"])
-createKey("D", UDim2.new(0, 78, 0, 78), COLORS["D"])
+createKey("A", UDim2.new(0, 0, 0, 78), stdSize, COLORS["A"])
+createKey("S", UDim2.new(0, 39, 0, 78), stdSize, COLORS["S"])
+createKey("D", UDim2.new(0, 78, 0, 78), stdSize, COLORS["D"])
+
+-- Fila de salto: SPACE
+createKey("SPACE", UDim2.new(0, 0, 0, 117), spaceSize, COLORS["SPACE"], "SPACE")
+
+-- ==========================================
+-- DIBUJO DEL MINI MOUSE A LA DERECHA (Solo botón izquierdo / LMB)
+-- ==========================================
+createKey("LMB", UDim2.new(0, 117, 0, 39), UDim2.new(0, 34, 0, 112), COLORS["LMB"], "L1")
 
 -- Animación al presionar/soltar
 local tweenInfo = TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
@@ -136,7 +149,22 @@ local function setKeyState(keyName, isActive)
 	end
 end
 
--- Función para poder arrastrar el teclado en caso de que estorbe en la pantalla
+-- Detección del toque en pantalla (Móvil) o Clic izquierdo (PC)
+local isTouchingScreen = false
+
+UserInputService.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		isTouchingScreen = true
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		isTouchingScreen = false
+	end
+end)
+
+-- Arrastrar el teclado en pantalla si estorba
 local dragging, dragInput, dragStart, startPos
 mainFrame.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -167,15 +195,14 @@ UserInputService.InputChanged:Connect(function(input)
 	end
 end)
 
--- Detección del Joystick y Herramientas equipadas (1-4)
+-- Lazo de actualización en tiempo real
 RunService.RenderStepped:Connect(function()
 	local char = player.Character
 	local humanoid = char and char:FindFirstChildOfClass("Humanoid")
 
-	-- 1. Lectura del Joystick en relación a la cámara
+	-- 1. Joystick
 	if humanoid and humanoid.MoveDirection.Magnitude > 0.1 then
 		local relativeMove = camera.CFrame:VectorToObjectSpace(humanoid.MoveDirection)
-		
 		setKeyState("W", relativeMove.Z < -0.35)
 		setKeyState("S", relativeMove.Z > 0.35)
 		setKeyState("A", relativeMove.X < -0.35)
@@ -187,7 +214,14 @@ RunService.RenderStepped:Connect(function()
 		setKeyState("D", false)
 	end
 
-	-- 2. Lectura de inventario (1, 2, 3, 4) según el arma equipada en MVS
+	-- 2. Salto (SPACE)
+	local isJumping = (humanoid and humanoid.Jump) or UserInputService:IsKeyDown(Enum.KeyCode.Space)
+	setKeyState("SPACE", isJumping)
+
+	-- 3. Mini Mouse (LMB se activa al tocar la pantalla)
+	setKeyState("LMB", isTouchingScreen or UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1))
+
+	-- 4. Armas 1 a 4
 	local backpack = player:FindFirstChild("Backpack")
 	local tools = {}
 	
