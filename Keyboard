@@ -1,0 +1,217 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+local camera = workspace.CurrentCamera
+
+-- Eliminar GUI anterior si se vuelve a ejecutar
+if playerGui:FindFirstChild("VisualKeystrokesMVS") then
+	playerGui.VisualKeystrokesMVS:Destroy()
+end
+
+-- Creación de la interfaz principal
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "VisualKeystrokesMVS"
+screenGui.ResetOnSpawn = false
+screenGui.IgnoreGuiInset = true
+screenGui.Parent = playerGui
+
+-- Contenedor en la ESQUINA SUPERIOR DERECHA
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "Container"
+mainFrame.Size = UDim2.new(0, 152, 0, 114)
+mainFrame.Position = UDim2.new(1, -168, 0, 16) -- Esquina superior derecha (con un margen de 16 píxeles)
+mainFrame.BackgroundTransparency = 1
+mainFrame.Parent = screenGui
+
+-- Colores
+local COLOR_BG_IDLE = Color3.fromRGB(22, 22, 26)
+local COLOR_BG_ACTIVE = Color3.fromRGB(255, 255, 255)
+local COLOR_TEXT_IDLE = Color3.fromRGB(255, 255, 255)
+local COLOR_TEXT_ACTIVE = Color3.fromRGB(15, 15, 15)
+
+-- Paleta de bordes neón como en la imagen
+local COLORS = {
+	["1"] = Color3.fromRGB(170, 85, 255),  -- Morado
+	["2"] = Color3.fromRGB(255, 65, 140),  -- Rosa/Magenta
+	["3"] = Color3.fromRGB(255, 150, 45),  -- Naranja
+	["4"] = Color3.fromRGB(255, 220, 50),  -- Amarillo
+	["W"] = Color3.fromRGB(70, 235, 110),  -- Verde
+	["A"] = Color3.fromRGB(45, 210, 255),  -- Cian
+	["S"] = Color3.fromRGB(55, 165, 255),  -- Azul claro
+	["D"] = Color3.fromRGB(85, 115, 255)   -- Azul/Índigo
+}
+
+local keyElements = {}
+
+-- Función para construir cada tecla
+local function createKey(name, pos, accentColor)
+	local keyFrame = Instance.new("Frame")
+	keyFrame.Name = "Key_" .. name
+	keyFrame.Size = UDim2.new(0, 34, 0, 34)
+	keyFrame.Position = pos
+	keyFrame.BackgroundColor3 = COLOR_BG_IDLE
+	keyFrame.BackgroundTransparency = 0.25
+	keyFrame.BorderSizePixel = 0
+	keyFrame.Parent = mainFrame
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 6)
+	corner.Parent = keyFrame
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = accentColor
+	stroke.Thickness = 1.6
+	stroke.Transparency = 0.15
+	stroke.Parent = keyFrame
+
+	-- Barra de acento inferior dentro de la tecla
+	local bottomBar = Instance.new("Frame")
+	bottomBar.Name = "AccentBar"
+	bottomBar.Size = UDim2.new(0.65, 0, 0, 2)
+	bottomBar.Position = UDim2.new(0.175, 0, 1, -5)
+	bottomBar.BackgroundColor3 = accentColor
+	bottomBar.BorderSizePixel = 0
+	bottomBar.Parent = keyFrame
+
+	local barCorner = Instance.new("UICorner")
+	barCorner.CornerRadius = UDim.new(1, 0)
+	barCorner.Parent = bottomBar
+
+	local label = Instance.new("TextLabel")
+	label.Name = "Label"
+	label.Size = UDim2.new(1, 0, 1, -2)
+	label.BackgroundTransparency = 1
+	label.Text = name
+	label.Font = Enum.Font.GothamBold
+	label.TextSize = 14
+	label.TextColor3 = COLOR_TEXT_IDLE
+	label.Parent = keyFrame
+
+	keyElements[name] = {
+		Frame = keyFrame,
+		Label = label,
+		Accent = accentColor,
+		Active = false
+	}
+end
+
+-- Fila superior: 1, 2, 3, 4
+createKey("1", UDim2.new(0, 0, 0, 0), COLORS["1"])
+createKey("2", UDim2.new(0, 39, 0, 0), COLORS["2"])
+createKey("3", UDim2.new(0, 78, 0, 0), COLORS["3"])
+createKey("4", UDim2.new(0, 117, 0, 0), COLORS["4"])
+
+-- Fila media: W (alineada sobre la S, columna 2)
+createKey("W", UDim2.new(0, 39, 0, 39), COLORS["W"])
+
+-- Fila inferior: A, S, D
+createKey("A", UDim2.new(0, 0, 0, 78), COLORS["A"])
+createKey("S", UDim2.new(0, 39, 0, 78), COLORS["S"])
+createKey("D", UDim2.new(0, 78, 0, 78), COLORS["D"])
+
+-- Animación al presionar/soltar
+local tweenInfo = TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+local function setKeyState(keyName, isActive)
+	local data = keyElements[keyName]
+	if not data or data.Active == isActive then return end
+	data.Active = isActive
+
+	if isActive then
+		TweenService:Create(data.Frame, tweenInfo, {
+			BackgroundColor3 = data.Accent,
+			BackgroundTransparency = 0.1
+		}):Play()
+		data.Label.TextColor3 = COLOR_TEXT_ACTIVE
+	else
+		TweenService:Create(data.Frame, tweenInfo, {
+			BackgroundColor3 = COLOR_BG_IDLE,
+			BackgroundTransparency = 0.25
+		}):Play()
+		data.Label.TextColor3 = COLOR_TEXT_IDLE
+	end
+end
+
+-- Función para poder arrastrar el teclado en caso de que estorbe en la pantalla
+local dragging, dragInput, dragStart, startPos
+mainFrame.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = true
+		dragStart = input.Position
+		startPos = mainFrame.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
+end)
+
+mainFrame.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement then
+		dragInput = input
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if input == dragInput and dragging then
+		local delta = input.Position - dragStart
+		mainFrame.Position = UDim2.new(
+			startPos.X.Scale, startPos.X.Offset + delta.X,
+			startPos.Y.Scale, startPos.Y.Offset + delta.Y
+		)
+	end
+end)
+
+-- Detección del Joystick y Herramientas equipadas (1-4)
+RunService.RenderStepped:Connect(function()
+	local char = player.Character
+	local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+
+	-- 1. Lectura del Joystick en relación a la cámara
+	if humanoid and humanoid.MoveDirection.Magnitude > 0.1 then
+		local relativeMove = camera.CFrame:VectorToObjectSpace(humanoid.MoveDirection)
+		
+		setKeyState("W", relativeMove.Z < -0.35)
+		setKeyState("S", relativeMove.Z > 0.35)
+		setKeyState("A", relativeMove.X < -0.35)
+		setKeyState("D", relativeMove.X > 0.35)
+	else
+		setKeyState("W", false)
+		setKeyState("S", false)
+		setKeyState("A", false)
+		setKeyState("D", false)
+	end
+
+	-- 2. Lectura de inventario (1, 2, 3, 4) según el arma equipada en MVS
+	local backpack = player:FindFirstChild("Backpack")
+	local tools = {}
+	
+	if backpack then
+		for _, item in ipairs(backpack:GetChildren()) do
+			if item:IsA("Tool") then
+				table.insert(tools, item)
+			end
+		end
+	end
+	
+	local equippedTool = char and char:FindFirstChildOfClass("Tool")
+	if equippedTool then
+		table.insert(tools, equippedTool)
+	end
+
+	table.sort(tools, function(a, b) return a.Name < b.Name end)
+
+	for i = 1, 4 do
+		local slotTool = tools[i]
+		if slotTool and slotTool.Parent == char then
+			setKeyState(tostring(i), true)
+		else
+			setKeyState(tostring(i), false)
+		end
+	end
+end)
